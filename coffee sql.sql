@@ -1,5 +1,5 @@
 -- =====================================================
--- Coffee Sales Trend Analysis | Database Setup & Business Analytics
+-- Coffee Sales Trend Analysis | SQL Analytics & Optimization
 -- Author: Yashika Singh (GitHub: @Yasheekaa)
 -- =====================================================
 
@@ -24,6 +24,16 @@ CREATE TABLE coffee_data (
     `Date` VARCHAR(20) NOT NULL,
     `Time` VARCHAR(20) NOT NULL
 );
+
+-- =====================================================
+-- Performance Optimization: Secondary Indexes
+-- =====================================================
+CREATE INDEX idx_coffee_name ON coffee_data(coffee_name);
+CREATE INDEX idx_time_of_day ON coffee_data(Time_of_Day);
+CREATE INDEX idx_hour_of_day ON coffee_data(hour_of_day);
+CREATE INDEX idx_weekday ON coffee_data(Weekday);
+CREATE INDEX idx_monthsort ON coffee_data(Monthsort);
+
 
 -- =====================================================
 -- Core Business Analytics Queries
@@ -129,4 +139,74 @@ SELECT
 FROM coffee_data
 WHERE Time_of_Day = 'Night'
 GROUP BY coffee_name
+ORDER BY total_orders DESC;
+
+
+-- =====================================================
+-- Advanced Business Analytics: Window Functions & CTEs
+-- =====================================================
+
+-- Question 13: Month-over-Month (MoM) Revenue Growth & Percentage Change
+WITH monthly_revenue AS (
+    SELECT
+        Month_name,
+        Monthsort,
+        ROUND(SUM(`money(Rs)`), 2) AS current_month_revenue
+    FROM coffee_data
+    GROUP BY Month_name, Monthsort
+)
+SELECT
+    Month_name,
+    current_month_revenue,
+    LAG(current_month_revenue, 1) OVER (ORDER BY Monthsort) AS previous_month_revenue,
+    ROUND(
+        (current_month_revenue - LAG(current_month_revenue, 1) OVER (ORDER BY Monthsort))
+        / LAG(current_month_revenue, 1) OVER (ORDER BY Monthsort) * 100, 2
+    ) AS mom_growth_percentage
+FROM monthly_revenue
+ORDER BY Monthsort;
+
+
+-- Question 14: Product Revenue Ranking & Cumulative Share (Pareto Analysis)
+WITH product_sales AS (
+    SELECT
+        coffee_name,
+        ROUND(SUM(`money(Rs)`), 2) AS product_revenue,
+        COUNT(*) AS total_sales_volume
+    FROM coffee_data
+    GROUP BY coffee_name
+)
+SELECT
+    coffee_name,
+    product_revenue,
+    total_sales_volume,
+    DENSE_RANK() OVER (ORDER BY product_revenue DESC) AS revenue_rank,
+    ROUND(product_revenue * 100.0 / SUM(product_revenue) OVER (), 2) AS pct_of_total_revenue,
+    ROUND(SUM(product_revenue) OVER (ORDER BY product_revenue DESC), 2) AS running_cumulative_revenue
+FROM product_sales
+ORDER BY revenue_rank;
+
+
+-- Question 15: Cross-Tabulation: Payment Method Breakdown by Daypart
+SELECT
+    Time_of_Day,
+    ROUND(SUM(CASE WHEN cash_type = 'card' THEN `money(Rs)` ELSE 0 END), 2) AS card_revenue,
+    ROUND(SUM(CASE WHEN cash_type = 'cash' THEN `money(Rs)` ELSE 0 END), 2) AS cash_revenue,
+    ROUND(SUM(`money(Rs)`), 2) AS total_revenue,
+    ROUND(
+        SUM(CASE WHEN cash_type = 'card' THEN `money(Rs)` ELSE 0 END) * 100.0 / SUM(`money(Rs)`), 2
+    ) AS card_share_pct
+FROM coffee_data
+GROUP BY Time_of_Day
+ORDER BY total_revenue DESC;
+
+
+-- Question 16: Hourly Peak Demand & Average Ticket Size
+SELECT
+    hour_of_day,
+    COUNT(*) AS total_orders,
+    ROUND(SUM(`money(Rs)`), 2) AS total_revenue,
+    ROUND(AVG(`money(Rs)`), 2) AS average_order_value
+FROM coffee_data
+GROUP BY hour_of_day
 ORDER BY total_orders DESC;
