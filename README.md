@@ -4,7 +4,7 @@
 [![Power BI](https://img.shields.io/badge/Power_BI-Desktop-F2C811?style=for-the-badge&logo=powerbi&logoColor=black)](https://powerbi.microsoft.com/)
 [![DAX](https://img.shields.io/badge/Analytics-DAX_%26_BI-2C5E8A?style=for-the-badge)](https://learn.microsoft.com/en-us/dax/)
 [![Author](https://img.shields.io/badge/Author-Yashika_Singh-E87A5D?style=for-the-badge&logo=github&logoColor=white)](https://github.com/Yasheekaa)
-[![License: MIT](https://img.shields.io/badge/License-MIT-green.svg?style=for-the-badge)](https://opensource.org/licenses/MIT)
+[![License: MIT](https://img.shields.io/badge/License-MIT-green.svg?style=for-the-badge)](./LICENSE)
 
 > An end-to-end retail business intelligence project exploring multi-month coffee shop transaction patterns. Incorporates relational database schema modeling, performance-indexed SQL analysis, advanced window functions, and an interactive Power BI executive dashboard for data-driven retail decisions.
 
@@ -79,7 +79,7 @@ The dataset captures POS micro-transactions across calendar months, recording te
 
 ## 🔍 Core SQL Analytics & Business Rationale
 
-The analysis is structured around concrete business objectives. Below is a representative selection of business problems addressed in [`coffee sql.sql`](coffee%20sql.sql):
+The analysis is structured around concrete business objectives. Below is a representative selection of business problems addressed in [`sql/coffee_sales_analysis.sql`](sql/coffee_sales_analysis.sql):
 
 ### 1. Overall Revenue and Order Baseline
 ```sql
@@ -210,7 +210,7 @@ ORDER BY revenue_rank;
 
 ## 📈 Power BI Data Model & DAX Formulations
 
-The Power BI analytical file [`coffee power bi.pbix`](coffee%20power%20bi.pbix) employs structured DAX calculations to feed interactive visual components:
+The Power BI analytical file [`dashboard/coffee_sales_dashboard.pbix`](dashboard/coffee_sales_dashboard.pbix) employs structured DAX calculations to feed interactive visual components:
 
 ```dax
 // 1. Total Gross Revenue
@@ -262,9 +262,13 @@ Based on empirical data extraction and visualization findings:
 Coffee-Sales-Trend-Analysis/
 ├── .gitignore              # Ignored local files, IDE caches, and OS artifacts
 ├── README.md               # Comprehensive project documentation & business report
-├── coffee sql.sql          # MySQL database schema, indexed queries, and window functions
-├── coffee_data.csv         # Structured POS transaction dataset (3,500+ records)
-├── coffee power bi.pbix    # Interactive Power BI report and DAX analytics model
+├── LICENSE                 # MIT License
+├── data/
+│   └── coffee_data.csv     # POS transaction dataset (3,547 records)
+├── sql/
+│   └── coffee_sales_analysis.sql  # MySQL schema, indexes and analysis queries
+├── dashboard/
+│   └── coffee_sales_dashboard.pbix # Power BI report
 └── images/
     └── dashboard.png       # High-resolution dashboard interface preview
 ```
@@ -286,13 +290,13 @@ cd Coffee-Sales-Trend-Analysis
 
 Execute the database provisioning and analysis script:
 ```sql
-SOURCE coffee sql.sql;
+SOURCE sql/coffee_sales_analysis.sql;
 ```
-*Alternatively, open `coffee sql.sql` within MySQL Workbench or DBeaver and run all statements.*
+*Alternatively, open `sql/coffee_sales_analysis.sql` within MySQL Workbench or DBeaver and run all statements.*
 
 ### 2. Exploring Power BI Dashboard
-1. Open [`coffee power bi.pbix`](coffee%20power%20bi.pbix) in **Power BI Desktop**.
-2. If prompted, verify the data source path points to [`coffee_data.csv`](coffee_data.csv) on your local system.
+1. Open [`dashboard/coffee_sales_dashboard.pbix`](dashboard/coffee_sales_dashboard.pbix) in **Power BI Desktop**.
+2. If prompted, verify the data source path points to [`data/coffee_data.csv`](data/coffee_data.csv) on your local system.
 3. Click **Home > Refresh** to reload data.
 4. Interact with the dynamic slicers (Day of Week, Shift, Payment Method) to explore multi-tier insights.
 
