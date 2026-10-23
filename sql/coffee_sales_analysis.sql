@@ -127,12 +127,16 @@ ORDER BY revenue DESC;
 
 
 -- Question 8: Analyze Monthly Revenue Trends
+-- Fix: before this I grouped by Month_name / Monthsort only. The data goes from Mar 2024 to Mar 2025,
+-- so March 2024 and March 2025 were added together and "Mar" looked like the best month.
+-- Now it is grouped by year + month. (March 2025 only has data till the 23rd.)
 SELECT
-    Month_name,
+    DATE_FORMAT(`Date`, '%Y-%m') AS sales_month,
+    COUNT(*) AS total_orders,
     ROUND(SUM(`money(Rs)`), 2) AS revenue
 FROM coffee_data
-GROUP BY Month_name, Monthsort
-ORDER BY Monthsort;
+GROUP BY DATE_FORMAT(`Date`, '%Y-%m')
+ORDER BY sales_month;
 
 
 -- Question 9: Identify Peak Ordering Hours
@@ -179,24 +183,24 @@ ORDER BY total_orders DESC;
 -- =====================================================
 
 -- Question 13: Month-over-Month (MoM) Revenue Growth & Percentage Change
+-- (same fix as Question 8, LAG has to run over year-month or March 2025 comes right after Feb 2024)
 WITH monthly_revenue AS (
     SELECT
-        Month_name,
-        Monthsort,
+        DATE_FORMAT(`Date`, '%Y-%m') AS sales_month,
         ROUND(SUM(`money(Rs)`), 2) AS current_month_revenue
     FROM coffee_data
-    GROUP BY Month_name, Monthsort
+    GROUP BY DATE_FORMAT(`Date`, '%Y-%m')
 )
 SELECT
-    Month_name,
+    sales_month,
     current_month_revenue,
-    LAG(current_month_revenue, 1) OVER (ORDER BY Monthsort) AS previous_month_revenue,
+    LAG(current_month_revenue, 1) OVER (ORDER BY sales_month) AS previous_month_revenue,
     ROUND(
-        (current_month_revenue - LAG(current_month_revenue, 1) OVER (ORDER BY Monthsort))
-        / LAG(current_month_revenue, 1) OVER (ORDER BY Monthsort) * 100, 2
+        (current_month_revenue - LAG(current_month_revenue, 1) OVER (ORDER BY sales_month))
+        / LAG(current_month_revenue, 1) OVER (ORDER BY sales_month) * 100, 2
     ) AS mom_growth_percentage
 FROM monthly_revenue
-ORDER BY Monthsort;
+ORDER BY sales_month;
 
 
 -- Question 14: Product Revenue Ranking & Cumulative Share (Pareto Analysis)
