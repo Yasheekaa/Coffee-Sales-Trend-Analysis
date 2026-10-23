@@ -1,6 +1,7 @@
 -- =====================================================
 -- Coffee Sales Trend Analysis | SQL Analytics & Optimization
 -- Author: Yashika Singh (GitHub: @Yasheekaa)
+-- Data  : data/coffee_data.csv (3,547 transactions, 1 Mar 2024 to 23 Mar 2025)
 -- =====================================================
 
 -- Step 1: Create Database
@@ -21,9 +22,38 @@ CREATE TABLE coffee_data (
     Month_name VARCHAR(20) NOT NULL,
     Weekdaysort INT NOT NULL,
     Monthsort INT NOT NULL,
-    `Date` VARCHAR(20) NOT NULL,
-    `Time` VARCHAR(20) NOT NULL
+    `Date` DATE NOT NULL,          -- was VARCHAR before, now a real date so YEAR() / MONTH() work
+    `Time` VARCHAR(20) NOT NULL,   -- raw text from the csv, most rows look like mm:ss.s (no hour)
+    order_time TIME                -- full time rebuilt from hour_of_day + `Time`
 );
+
+-- Step 3: Load the CSV into the table
+-- (the first version only created an empty table, so none of the queries returned anything after cloning)
+-- local_infile has to be ON:   SET GLOBAL local_infile = 1;
+-- In MySQL Workbench also add OPT_LOCAL_INFILE=1 in Edit Connection > Advanced > Others.
+-- Change the path if you run this from a different folder.
+LOAD DATA LOCAL INFILE 'data/coffee_data.csv'
+INTO TABLE coffee_data
+FIELDS TERMINATED BY ','
+LINES TERMINATED BY '\r\n'
+IGNORE 1 ROWS
+(@hour, cash_type, `money(Rs)`, coffee_name, Time_of_Day, Weekday, Month_name,
+ Weekdaysort, Monthsort, @date_text, @time_text)
+SET
+    hour_of_day = @hour,
+    `Date` = STR_TO_DATE(@date_text, '%c/%e/%Y'),   -- dates in the csv look like 3/1/2024
+    `Time` = @time_text,
+    order_time = CASE
+        -- 8 rows already have the full time like 21:23:53
+        WHEN LENGTH(@time_text) = 8 THEN CAST(@time_text AS TIME)
+        -- the rest look like 15:50.5 (minutes:seconds), the hour comes from hour_of_day
+        ELSE MAKETIME(@hour,
+                      SUBSTRING_INDEX(@time_text, ':', 1),
+                      FLOOR(SUBSTRING_INDEX(@time_text, ':', -1)))
+    END;
+
+-- quick check after loading (should be 3547)
+SELECT COUNT(*) AS rows_loaded FROM coffee_data;
 
 -- =====================================================
 -- Performance Optimization: Secondary Indexes
@@ -33,6 +63,8 @@ CREATE INDEX idx_time_of_day ON coffee_data(Time_of_Day);
 CREATE INDEX idx_hour_of_day ON coffee_data(hour_of_day);
 CREATE INDEX idx_weekday ON coffee_data(Weekday);
 CREATE INDEX idx_monthsort ON coffee_data(Monthsort);
+CREATE INDEX idx_date ON coffee_data(`Date`);
+-- note: with only ~3.5k rows the indexes don't make a big difference, I added them to practice indexing
 
 
 -- =====================================================
