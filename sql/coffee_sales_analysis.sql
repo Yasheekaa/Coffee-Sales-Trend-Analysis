@@ -68,6 +68,45 @@ CREATE INDEX idx_date ON coffee_data(`Date`);
 
 
 -- =====================================================
+-- Data Quality Checks (run after loading)
+-- =====================================================
+
+-- Check 1: date range and how many days have sales
+SELECT
+    MIN(`Date`) AS first_day,
+    MAX(`Date`) AS last_day,
+    DATEDIFF(MAX(`Date`), MIN(`Date`)) + 1 AS days_in_range,
+    COUNT(DISTINCT `Date`) AS days_with_sales
+FROM coffee_data;
+
+
+-- Check 2: rows where the date or time did not convert (should be 0)
+SELECT COUNT(*) AS bad_rows
+FROM coffee_data
+WHERE `Date` IS NULL OR order_time IS NULL;
+
+
+-- Check 3: does hour_of_day match the rebuilt order_time? (should be 0)
+SELECT COUNT(*) AS hour_mismatch
+FROM coffee_data
+WHERE HOUR(order_time) <> hour_of_day;
+
+
+-- Check 4: duplicate transactions (same date, time and product)
+SELECT `Date`, order_time, coffee_name, COUNT(*) AS times_found
+FROM coffee_data
+GROUP BY `Date`, order_time, coffee_name
+HAVING COUNT(*) > 1;
+
+
+-- Check 5: Monthsort only stores the month number, so Mar 2024 and Mar 2025 get the same value
+SELECT YEAR(`Date`) AS sales_year, Month_name, Monthsort, COUNT(*) AS orders
+FROM coffee_data
+WHERE Month_name = 'Mar'
+GROUP BY YEAR(`Date`), Month_name, Monthsort;
+
+
+-- =====================================================
 -- Core Business Analytics Queries
 -- =====================================================
 
@@ -100,6 +139,7 @@ ORDER BY total_orders DESC;
 
 
 -- Question 5: Analyze Revenue by Payment Method
+-- Result: every transaction in this dataset is 'card' (3547 of 3547), there is no cash at all.
 SELECT
     cash_type,
     ROUND(SUM(`money(Rs)`), 2) AS revenue
@@ -117,13 +157,14 @@ ORDER BY revenue DESC
 LIMIT 1;
 
 
--- Question 7: Analyze Revenue Distribution Across Weekdays
+-- Question 7: Analyze Revenue Distribution Across Weekdays (Mon to Sun order)
 SELECT
     Weekday,
+    COUNT(*) AS total_orders,
     ROUND(SUM(`money(Rs)`), 2) AS revenue
 FROM coffee_data
-GROUP BY Weekday
-ORDER BY revenue DESC;
+GROUP BY Weekday, Weekdaysort
+ORDER BY Weekdaysort;
 
 
 -- Question 8: Analyze Monthly Revenue Trends
@@ -224,14 +265,14 @@ ORDER BY revenue_rank;
 
 
 -- Question 15: Cross-Tabulation: Payment Method Breakdown by Daypart
+-- Note: since all payments are card, cash_revenue is 0 everywhere. I kept the query because it will
+-- work as it is if cash data is added later. revenue_share_pct is the useful column here.
 SELECT
     Time_of_Day,
     ROUND(SUM(CASE WHEN cash_type = 'card' THEN `money(Rs)` ELSE 0 END), 2) AS card_revenue,
     ROUND(SUM(CASE WHEN cash_type = 'cash' THEN `money(Rs)` ELSE 0 END), 2) AS cash_revenue,
     ROUND(SUM(`money(Rs)`), 2) AS total_revenue,
-    ROUND(
-        SUM(CASE WHEN cash_type = 'card' THEN `money(Rs)` ELSE 0 END) * 100.0 / SUM(`money(Rs)`), 2
-    ) AS card_share_pct
+    ROUND(SUM(`money(Rs)`) * 100.0 / (SELECT SUM(`money(Rs)`) FROM coffee_data), 2) AS revenue_share_pct
 FROM coffee_data
 GROUP BY Time_of_Day
 ORDER BY total_revenue DESC;
@@ -246,3 +287,106 @@ SELECT
 FROM coffee_data
 GROUP BY hour_of_day
 ORDER BY total_orders DESC;
+
+
+-- =====================================================
+-- More Analysis (added after the first version)
+-- =====================================================
+
+-- Question 17: Average Order Value and Average Sales per Day
+SELECT
+    ROUND(SUM(`money(Rs)`) / COUNT(*), 2) AS avg_order_value,
+    ROUND(SUM(`money(Rs)`) / COUNT(DISTINCT `Date`), 2) AS avg_revenue_per_day,
+    ROUND(COUNT(*) / COUNT(DISTINCT `Date`), 1) AS avg_orders_per_day
+FROM coffee_data;
+
+
+-- Question 18: Weekday vs Weekend - average revenue per day
+-- Comparing total revenue is not fair (5 weekdays vs 2 weekend days), so first I sum every day
+-- and then take the average per day type.
+WITH daily_sales AS (
+    SELECT
+        `Date`,
+        Weekday,
+        SUM(`money(Rs)`) AS day_revenue,
+        COUNT(*) AS day_orders
+    FROM coffee_data
+    GROUP BY `Date`, Weekday
+)
+SELECT
+    CASE WHEN Weekday IN ('Sat', 'Sun') THEN 'Weekend' ELSE 'Weekday' END AS day_type,
+    COUNT(*) AS days,
+    ROUND(AVG(day_revenue), 2) AS avg_revenue_per_day,
+    ROUND(AVG(day_orders), 1) AS avg_orders_per_day
+FROM daily_sales
+GROUP BY CASE WHEN Weekday IN ('Sat', 'Sun') THEN 'Weekend' ELSE 'Weekday' END;
+
+
+-- Question 19: Top 3 Coffees in Each Time of Day (one query instead of Questions 10, 11, 12)
+WITH product_by_daypart AS (
+    SELECT
+        Time_of_Day,
+        coffee_name,
+        COUNT(*) AS total_orders,
+        ROW_NUMBER() OVER (PARTITION BY Time_of_Day ORDER BY COUNT(*) DESC) AS rank_in_daypart
+    FROM coffee_data
+    GROUP BY Time_of_Day, coffee_name
+)
+SELECT Time_of_Day, rank_in_daypart, coffee_name, total_orders
+FROM product_by_daypart
+WHERE rank_in_daypart <= 3
+ORDER BY FIELD(Time_of_Day, 'Morning', 'Afternoon', 'Night'), rank_in_daypart;
+
+
+-- Question 20: Price History of Each Coffee
+-- Every coffee has 4 different prices in the data, this shows when each price was used.
+SELECT
+    coffee_name,
+    `money(Rs)` AS price,
+    MIN(`Date`) AS first_sold,
+    MAX(`Date`) AS last_sold,
+    COUNT(*) AS orders_at_this_price
+FROM coffee_data
+GROUP BY coffee_name, `money(Rs)`
+ORDER BY coffee_name, first_sold;
+
+
+-- Question 21: Busiest Hour for Each Day of the Week
+WITH hourly AS (
+    SELECT
+        Weekday,
+        Weekdaysort,
+        hour_of_day,
+        COUNT(*) AS total_orders,
+        RANK() OVER (PARTITION BY Weekday ORDER BY COUNT(*) DESC) AS hour_rank
+    FROM coffee_data
+    GROUP BY Weekday, Weekdaysort, hour_of_day
+)
+SELECT Weekday, hour_of_day AS busiest_hour, total_orders
+FROM hourly
+WHERE hour_rank = 1
+ORDER BY Weekdaysort, hour_of_day;
+
+
+-- Question 22: Each Coffee's Share of Monthly Revenue
+SELECT
+    DATE_FORMAT(`Date`, '%Y-%m') AS sales_month,
+    coffee_name,
+    ROUND(SUM(`money(Rs)`), 2) AS revenue,
+    ROUND(SUM(`money(Rs)`) * 100.0
+          / SUM(SUM(`money(Rs)`)) OVER (PARTITION BY DATE_FORMAT(`Date`, '%Y-%m')), 2) AS share_of_month_pct
+FROM coffee_data
+GROUP BY DATE_FORMAT(`Date`, '%Y-%m'), coffee_name
+ORDER BY sales_month, revenue DESC;
+
+
+-- Question 23: Top 5 Days by Revenue
+SELECT
+    `Date`,
+    Weekday,
+    COUNT(*) AS total_orders,
+    ROUND(SUM(`money(Rs)`), 2) AS revenue
+FROM coffee_data
+GROUP BY `Date`, Weekday
+ORDER BY revenue DESC
+LIMIT 5;
