@@ -1,322 +1,249 @@
-# ☕ Coffee Sales Trend Analysis | SQL & Power BI
+# ☕ Coffee Sales Trend Analysis | SQL, Python & Power BI
 
 [![SQL](https://img.shields.io/badge/SQL-MySQL_8.0-00758F?style=for-the-badge&logo=mysql&logoColor=white)](https://www.mysql.com/)
+[![Python](https://img.shields.io/badge/Python-Pandas_%7C_Seaborn-3776AB?style=for-the-badge&logo=python&logoColor=white)](https://www.python.org/)
 [![Power BI](https://img.shields.io/badge/Power_BI-Desktop-F2C811?style=for-the-badge&logo=powerbi&logoColor=black)](https://powerbi.microsoft.com/)
-[![DAX](https://img.shields.io/badge/Analytics-DAX_%26_BI-2C5E8A?style=for-the-badge)](https://learn.microsoft.com/en-us/dax/)
 [![Author](https://img.shields.io/badge/Author-Yashika_Singh-E87A5D?style=for-the-badge&logo=github&logoColor=white)](https://github.com/Yasheekaa)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg?style=for-the-badge)](./LICENSE)
 
-> An end-to-end retail business intelligence project exploring multi-month coffee shop transaction patterns. Incorporates relational database schema modeling, performance-indexed SQL analysis, advanced window functions, and an interactive Power BI executive dashboard for data-driven retail decisions.
+> Analysis of one year of coffee shop transactions (3,547 orders, March 2024 to March 2025). I load the data into **MySQL** and answer business questions with SQL, check and clean it with **Python**, and present the main numbers in a **Power BI** dashboard.
 
 ---
 
-## 📌 Executive Summary
+## 📌 Business Questions
 
-Modern retail coffee operations handle thousands of micro-transactions weekly across shifting dayparts, varied payment mechanisms, and dynamic customer preferences. This project delivers an end-to-end analytical framework that transforms granular Point-of-Sale (POS) data into actionable business intelligence.
-
-Through structured MySQL database modeling and Power BI reporting, this study addresses critical operational challenges:
-- **Product Portfolio Performance:** Pinpointing high-margin versus high-volume beverage offerings.
-- **Temporal Patterns & Peak Dynamics:** Isolating hourly rushes and weekday revenue concentrations to drive intelligent staffing and barista shift allocation.
-- **Payment Behavior Dynamics:** Analyzing digital card versus cash preferences across dayparts to streamline checkout efficiency.
-- **Trend Forecasting & Seasonality:** Tracking month-over-month performance and cumulative revenue velocity.
+1. How much revenue does the shop make, and which coffees bring in the most money?
+2. What are the busiest hours and days, and is the weekend really slower?
+3. How did sales change month by month?
+4. Do customers order different coffees in the morning vs at night?
+5. Did price changes during the year affect sales?
 
 ---
 
-## 📊 Interactive Dashboard Showcase
-
-The Power BI dashboard translates SQL analytical findings into an intuitive, multi-dimensional executive control room:
+## 📊 Dashboard
 
 <p align="center">
-  <img src="images/dashboard.png" alt="Coffee Sales BI Dashboard Overview" width="100%" style="border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.15);" />
+  <img src="images/dashboard.png" alt="Coffee Sales Dashboard" width="100%" />
 </p>
 
-### Key Interface Highlights
-- **Real-Time KPI Cards:** Instant visibility into Total Revenue, Transaction Volume, and Average Ticket Size.
-- **Sales Trends & Seasonality:** Monthly revenue trajectories and weekday distribution curves.
-- **Product Contribution Matrix:** Revenue and volume breakdown across coffee varieties (Latte, Americano, Cappuccino, etc.).
-- **Daypart & Hourly Segmentation:** Granular morning, afternoon, and night shift performance gauges.
-- **Payment Split Analytics:** Digital card transactions vs. cash settlement ratios.
+The dashboard ([`dashboard/coffee_sales_dashboard.pbix`](dashboard/coffee_sales_dashboard.pbix)) has product cards for each coffee, KPI cards (total spend, peak hour, peak hour cups and spend, weekend spend), a spending trend over time, spend by day of week and spend by time period, with a slicer to filter by coffee.
 
----
-
-## 🏗️ Technical Architecture & Data Pipeline
-
-The project follows a standard production data lifecycle, moving from raw transaction logs through relational storage, analytical query execution, and business intelligence reporting:
-
-```mermaid
-flowchart TD
-    A["Raw POS Transactions<br/>(coffee_data.csv)"] --> B["MySQL Staging & Schema Definition<br/>(Table DDL & Datatype Constraints)"]
-    B --> C["Performance Indexing<br/>(Secondary B-Tree Indexes on Foreign Keys & Temporal Fields)"]
-    C --> D["SQL Business Queries<br/>(Aggregations, Grouping, Filter Conditions)"]
-    C --> E["Advanced Window Functions<br/>(LAG for MoM, DENSE_RANK, Running Cumulative Revenue)"]
-    D --> F["Power BI Data Model<br/>(Star Schema, Calendar Table, DAX Measures)"]
-    E --> F
-    F --> G["Interactive BI Dashboard<br/>(Executive Visuals, Slicers & Cross-Filtering)"]
-```
-
----
-
-## 📂 Data Dictionary & Schema Specification
-
-The dataset captures POS micro-transactions across calendar months, recording temporal attributes, product categories, and transaction monetary values.
-
-| Column Name | Data Type | Constraint | Description | Sample Value |
-| :--- | :--- | :--- | :--- | :--- |
-| `transaction_id` | `INT` | Primary Key, Auto-Increment | Unique identifier generated for each transaction | `1001` |
-| `hour_of_day` | `INT` | `0 <= hour <= 23` | Operating hour during which transaction occurred | `10` |
-| `cash_type` | `VARCHAR(20)` | `NOT NULL` | Payment settlement method (`card` or `cash`) | `card` |
-| `money(Rs)` | `DECIMAL(10,2)` | `NOT NULL` | Transaction total amount in INR | `38.70` |
-| `coffee_name` | `VARCHAR(100)` | `NOT NULL` | Specific coffee beverage purchased | `Latte` |
-| `Time_of_Day` | `VARCHAR(20)` | `NOT NULL` | Operating shift categorization (`Morning`, `Afternoon`, `Night`) | `Morning` |
-| `Weekday` | `VARCHAR(20)` | `NOT NULL` | Abbreviated day of transaction (`Mon`, `Tue`, etc.) | `Fri` |
-| `Month_name` | `VARCHAR(20)` | `NOT NULL` | Abbreviated calendar month (`Mar`, `Apr`, etc.) | `Mar` |
-| `Weekdaysort` | `INT` | `1 to 7` | Chronological sorting index for weekdays | `5` |
-| `Monthsort` | `INT` | `1 to 12` | Chronological sorting index for calendar months | `3` |
-| `Date` | `VARCHAR(20)` | `NOT NULL` | Calendar transaction date (`M/D/YYYY`) | `3/1/2024` |
-| `Time` | `VARCHAR(20)` | `NOT NULL` | Exact transaction timestamp | `15:50.5` |
-
----
-
-## 🔍 Core SQL Analytics & Business Rationale
-
-The analysis is structured around concrete business objectives. Below is a representative selection of business problems addressed in [`sql/coffee_sales_analysis.sql`](sql/coffee_sales_analysis.sql):
-
-### 1. Overall Revenue and Order Baseline
-```sql
--- Question 1: Total Revenue
-SELECT ROUND(SUM(`money(Rs)`), 2) AS total_revenue
-FROM coffee_data;
-
--- Question 2: Total Order Volume
-SELECT COUNT(*) AS total_orders
-FROM coffee_data;
-```
-> **Business Rationale:** Establishes the macro-level benchmark for commercial scale and average transaction size across the operating period.
-
-### 2. Product Contribution & Menu Engineering
-```sql
--- Question 3: Revenue by Coffee Product
-SELECT
-    coffee_name,
-    ROUND(SUM(`money(Rs)`), 2) AS revenue
-FROM coffee_data
-GROUP BY coffee_name
-ORDER BY revenue DESC;
-
--- Question 4: Order Volume by Product
-SELECT
-    coffee_name,
-    COUNT(*) AS total_orders
-FROM coffee_data
-GROUP BY coffee_name
-ORDER BY total_orders DESC;
-```
-> **Business Rationale:** Identifies the primary cash-cow products (e.g., Latte, Americano) versus niche offerings, guiding raw ingredient procurement (coffee beans, specialty dairy, syrups).
-
-### 3. Payment Processing Channel Preferences
-```sql
--- Question 5: Revenue by Payment Method
-SELECT
-    cash_type,
-    ROUND(SUM(`money(Rs)`), 2) AS revenue
-FROM coffee_data
-GROUP BY cash_type;
-```
-> **Business Rationale:** Evaluates card transaction penetration to optimize merchant POS terminal contracts and cashless incentives.
-
-### 4. Day-of-Week Revenue Distribution
-```sql
--- Question 7: Revenue Distribution Across Weekdays
-SELECT
-    Weekday,
-    ROUND(SUM(`money(Rs)`), 2) AS revenue
-FROM coffee_data
-GROUP BY Weekday
-ORDER BY revenue DESC;
-```
-> **Business Rationale:** Distinguishes high-volume weekday commercial customer patterns from weekend leisure demand, supporting targeted promotional calendars.
-
-### 5. Shift & Daypart Demand Dynamics
-```sql
--- Question 10, 11, 12: Product Preference by Operating Shift
-SELECT coffee_name, COUNT(*) AS total_orders
-FROM coffee_data
-WHERE Time_of_Day = 'Morning'
-GROUP BY coffee_name
-ORDER BY total_orders DESC;
-```
-> **Business Rationale:** Highlights morning espresso demand versus sweeter, afternoon dessert-coffee consumption (e.g., Hot Chocolate, Mocha), assisting prep shifts.
-
----
-
-## ⚡ Performance Optimization & Advanced SQL Analytics
-
-To elevate this repository from simple querying to production-grade data engineering, the SQL suite implements query tuning and analytical window functions:
-
-### 1. Secondary B-Tree Indexing
-```sql
-CREATE INDEX idx_coffee_name ON coffee_data(coffee_name);
-CREATE INDEX idx_time_of_day ON coffee_data(Time_of_Day);
-CREATE INDEX idx_hour_of_day ON coffee_data(hour_of_day);
-CREATE INDEX idx_weekday ON coffee_data(Weekday);
-CREATE INDEX idx_monthsort ON coffee_data(Monthsort);
-```
-*Optimizes filtering on high-cardinality and frequent group-by columns, reducing full-table scans during aggregation pipelines.*
-
-### 2. Month-over-Month (MoM) Growth Rate Analysis
-```sql
-WITH monthly_revenue AS (
-    SELECT
-        Month_name,
-        Monthsort,
-        ROUND(SUM(`money(Rs)`), 2) AS current_month_revenue
-    FROM coffee_data
-    GROUP BY Month_name, Monthsort
-)
-SELECT
-    Month_name,
-    current_month_revenue,
-    LAG(current_month_revenue, 1) OVER (ORDER BY Monthsort) AS previous_month_revenue,
-    ROUND(
-        (current_month_revenue - LAG(current_month_revenue, 1) OVER (ORDER BY Monthsort))
-        / LAG(current_month_revenue, 1) OVER (ORDER BY Monthsort) * 100, 2
-    ) AS mom_growth_percentage
-FROM monthly_revenue
-ORDER BY Monthsort;
-```
-
-### 3. Pareto Product Ranking & Cumulative Contribution
-```sql
-WITH product_sales AS (
-    SELECT
-        coffee_name,
-        ROUND(SUM(`money(Rs)`), 2) AS product_revenue,
-        COUNT(*) AS total_sales_volume
-    FROM coffee_data
-    GROUP BY coffee_name
-)
-SELECT
-    coffee_name,
-    product_revenue,
-    total_sales_volume,
-    DENSE_RANK() OVER (ORDER BY product_revenue DESC) AS revenue_rank,
-    ROUND(product_revenue * 100.0 / SUM(product_revenue) OVER (), 2) AS pct_of_total_revenue,
-    ROUND(SUM(product_revenue) OVER (ORDER BY product_revenue DESC), 2) AS running_cumulative_revenue
-FROM product_sales
-ORDER BY revenue_rank;
-```
-
----
-
-## 📈 Power BI Data Model & DAX Formulations
-
-The Power BI analytical file [`dashboard/coffee_sales_dashboard.pbix`](dashboard/coffee_sales_dashboard.pbix) employs structured DAX calculations to feed interactive visual components:
+**DAX measures used in the report**
 
 ```dax
-// 1. Total Gross Revenue
-Total Revenue = SUM(coffee_data[money(Rs)])
+Total_Spend    = SUM('coffee_data'[money(Rs)])
+Total Cup Sold = COUNT(coffee_data[coffee_name])
 
-// 2. Transaction Count
-Total Orders = COUNTROWS(coffee_data)
+Peak_Hour =
+VAR HourTable = SUMMARIZE('coffee_data', 'coffee_data'[hour_of_day], "Cups", COUNT('coffee_data'[coffee_name]))
+VAR MAXCups   = MAXX(HourTable, [Cups])
+RETURN MAXX(FILTER(HourTable, [Cups] = MAXCups), [hour_of_day])
 
-// 3. Average Order Value (AOV)
-Average Ticket Size = DIVIDE([Total Revenue], [Total Orders], 0)
+Peak_Hour_Lable = FORMAT(TIME([Peak_Hour], 0, 0), "h AM/PM")
 
-// 4. Digital Card Revenue Contribution Rate
-Card Share % = 
-DIVIDE(
-    CALCULATE([Total Revenue], coffee_data[cash_type] = "card"),
-    [Total Revenue],
-    0
-)
+Peak Hour Cups =
+VAR HourCups = SUMMARIZE('coffee_data', 'coffee_data'[hour_of_day], "TotalCups", COUNTROWS('coffee_data'))
+RETURN MAXX(TOPN(1, HourCups, [TotalCups], DESC), [TotalCups])
 
-// 5. Morning Shift Revenue Contribution
-Morning Revenue Share % = 
-DIVIDE(
-    CALCULATE([Total Revenue], coffee_data[Time_of_Day] = "Morning"),
-    [Total Revenue],
-    0
+Peak Hour Spend =
+VAR HourTable = SUMMARIZE('coffee_data', 'coffee_data'[hour_of_day], "Spend", SUM('coffee_data'[money(Rs)]))
+RETURN MAXX(HourTable, [Spend])
+
+Weekend_Spend = CALCULATE([Total_Spend], 'coffee_data'[Weekday] IN { "Sat", "Sun" })
+
+Weekend_Average_Spend =
+AVERAGEX(
+    FILTER(VALUES('coffee_data'[Weekday]), 'coffee_data'[Weekday] IN { "Sat", "Sun" }),
+    CALCULATE([Total_Spend])
 )
 ```
 
+There are also `Weekday_Spend` and `Weekday_Average_Spend` (same logic for Mon to Fri) and a `Coffee_Images` measure that returns an image URL for each coffee card.
+
 ---
 
-## 💡 Strategic Business Recommendations
+## 🗃️ Dataset
 
-Based on empirical data extraction and visualization findings:
+`data/coffee_data.csv`: 3,547 rows, 11 columns, from a public coffee sales dataset on Kaggle.
 
-1. **Staff Allocation & Shift Scheduling:**
-   - Transaction volume concentrates heavily during morning rush windows (around 10:00 AM) and early afternoon. Double-barista coverage should be scheduled between 09:30 AM and 01:30 PM to minimize wait times and customer abandonment.
-2. **Menu Optimization & Ingredient Forecasting:**
-   - Core drivers (Latte and Americano) account for the majority of total revenue. Implement automated reordering triggers for premium espresso beans and whole milk.
-3. **Card Payment Streamlining:**
-   - Digital card transactions represent the dominant share of total revenue. Deploying contactless tap-to-pay terminals and integrated digital loyalty programs will accelerate checkout throughput.
-4. **Targeted Evening Upselling:**
-   - Night shift orders decline in volume. Introduce bundled promotional pricing (e.g., coffee pairing with pastries) during late afternoons and evenings to lift average basket size.
+| Column | Example | Notes |
+| :--- | :--- | :--- |
+| `hour_of_day` | `10` | 6 to 22 |
+| `cash_type` | `card` | **every row is card** |
+| `money(Rs)` | `38.70` | amount of the order |
+| `coffee_name` | `Latte` | 8 coffees |
+| `Time_of_Day` | `Morning` | Morning (6-11), Afternoon (12-16), Night (17-22) |
+| `Weekday`, `Weekdaysort` | `Fri`, `5` | Mon = 1 ... Sun = 7 |
+| `Month_name`, `Monthsort` | `Mar`, `3` | **no year**, see data issues below |
+| `Date` | `3/1/2024` | M/D/YYYY |
+| `Time` | `15:50.5` | **broken**, see data issues below |
+
+---
+
+## 🧹 Data Issues I Found (and fixed)
+
+| Issue | Why it matters | What I did |
+| :--- | :--- | :--- |
+| The SQL script created the table but never loaded the CSV | Anyone running the script got empty results | Added a `LOAD DATA LOCAL INFILE` step |
+| `Date` was stored as `VARCHAR` | Date functions and sorting did not work properly | Stored as `DATE` using `STR_TO_DATE` |
+| `Month_name` / `Monthsort` have no year, but the data covers Mar 2024 to Mar 2025 | My first monthly trend and MoM queries added March 2024 and March 2025 together | Grouped by year + month (`DATE_FORMAT(Date, '%Y-%m')`) |
+| `Time` lost its hour (Excel format), e.g. `15:50.5` means 15 min 50 s | Exact order time was not available | Rebuilt `order_time` from `hour_of_day` + minutes and seconds (8 rows already had a full time) |
+| All payments are card | Cash vs card comparison is not possible | Kept the query but noted it, removed cash claims from this README |
+| Every coffee has 4 different prices | Revenue changes are partly price changes | Added a price history query and chart |
+
+---
+
+## 🚀 Key Insights
+
+- **Total revenue Rs 1,12,245** from 3,547 orders. Average order value **Rs 31.65**, about **9 orders and Rs 295 per day**.
+- **Latte** earns the most (23.9% of revenue) while **Americano with Milk** is ordered the most (809 orders). The top 4 coffees make about **75%** of revenue and Espresso only 2.4%.
+- **10 AM is the peak hour** (328 orders), with a second peak at **4 PM** (278).
+- Revenue is almost equal across **Morning 32%, Afternoon 34% and Night 34%**.
+- Mornings are mostly Americano with Milk and Cortado. At night Latte, Cappuccino, Hot Chocolate and Cocoa go up.
+- **Weekdays are busier:** Rs 309 per weekday vs Rs 258 per weekend day (about 17% less). Tuesday is the best day and Sunday the weakest.
+- **Best months:** October 2024 (Rs 13,891) and February 2025 (Rs 13,215). Weakest: April 2024 and January 2025.
+- **Prices changed 3 times.** All coffees got cheaper in July 2024 and more expensive again from late September 2024. The best month came after the price increase, so price alone does not explain demand.
+
+---
+
+## 📈 Python EDA
+
+The notebook [`notebooks/coffee_sales_eda.ipynb`](notebooks/coffee_sales_eda.ipynb) checks data quality, rebuilds the order time, saves `data/coffee_data_clean.csv` and creates these charts:
+
+| | |
+| :---: | :---: |
+| ![Monthly revenue](images/charts/1_monthly_revenue.png) | ![Revenue by coffee](images/charts/2_revenue_by_coffee.png) |
+| ![Orders by hour](images/charts/3_orders_by_hour.png) | ![Weekday revenue](images/charts/4_weekday_revenue.png) |
+| ![Hour x weekday heatmap](images/charts/5_hour_weekday_heatmap.png) | ![Coffee by time of day](images/charts/6_coffee_by_daypart.png) |
+
+![Price history](images/charts/7_price_history.png)
+
+---
+
+## 🔍 SQL Highlights
+
+[`sql/coffee_sales_analysis.sql`](sql/coffee_sales_analysis.sql) has the table, the CSV load, 5 data checks and 23 business questions.
+
+**Monthly revenue (fixed to use year + month)**
+```sql
+SELECT
+    DATE_FORMAT(`Date`, '%Y-%m') AS sales_month,
+    COUNT(*) AS total_orders,
+    ROUND(SUM(`money(Rs)`), 2) AS revenue
+FROM coffee_data
+GROUP BY DATE_FORMAT(`Date`, '%Y-%m')
+ORDER BY sales_month;
+```
+
+**Weekday vs weekend, average revenue per day**
+```sql
+WITH daily_sales AS (
+    SELECT `Date`, Weekday, SUM(`money(Rs)`) AS day_revenue, COUNT(*) AS day_orders
+    FROM coffee_data
+    GROUP BY `Date`, Weekday
+)
+SELECT
+    CASE WHEN Weekday IN ('Sat', 'Sun') THEN 'Weekend' ELSE 'Weekday' END AS day_type,
+    COUNT(*) AS days,
+    ROUND(AVG(day_revenue), 2) AS avg_revenue_per_day,
+    ROUND(AVG(day_orders), 1) AS avg_orders_per_day
+FROM daily_sales
+GROUP BY CASE WHEN Weekday IN ('Sat', 'Sun') THEN 'Weekend' ELSE 'Weekday' END;
+```
+
+**Top 3 coffees in each time of day (window function)**
+```sql
+WITH product_by_daypart AS (
+    SELECT
+        Time_of_Day,
+        coffee_name,
+        COUNT(*) AS total_orders,
+        ROW_NUMBER() OVER (PARTITION BY Time_of_Day ORDER BY COUNT(*) DESC) AS rank_in_daypart
+    FROM coffee_data
+    GROUP BY Time_of_Day, coffee_name
+)
+SELECT Time_of_Day, rank_in_daypart, coffee_name, total_orders
+FROM product_by_daypart
+WHERE rank_in_daypart <= 3
+ORDER BY FIELD(Time_of_Day, 'Morning', 'Afternoon', 'Night'), rank_in_daypart;
+```
+
+Other queries include month-over-month growth with `LAG`, a Pareto ranking with `DENSE_RANK` and running totals, price history per coffee, the busiest hour of every weekday and each coffee's share of monthly revenue.
+
+---
+
+## 💡 Recommendations
+
+1. **Staffing:** keep an extra barista from 9 to 11 AM and around 4 PM, mainly on Mondays and Tuesdays.
+2. **Weekend offers:** a weekend day makes about 17% less than a weekday, so weekend combos or loyalty points could help.
+3. **Stock planning:** Latte and Americano with Milk are almost half of the revenue, so milk and espresso beans should never run out.
+4. **Evening menu:** promote Hot Chocolate, Cocoa and Cappuccino after 5 PM when they sell the most.
 
 ---
 
 ## 📁 Repository Structure
 
-```bash
+```text
 Coffee-Sales-Trend-Analysis/
-├── .gitignore              # Ignored local files, IDE caches, and OS artifacts
-├── README.md               # Comprehensive project documentation & business report
-├── LICENSE                 # MIT License
 ├── data/
-│   └── coffee_data.csv     # POS transaction dataset (3,547 records)
+│   ├── coffee_data.csv              # original dataset (3,547 rows)
+│   └── coffee_data_clean.csv        # cleaned by the notebook (order_datetime, year_month, ...)
 ├── sql/
-│   └── coffee_sales_analysis.sql  # MySQL schema, indexes and analysis queries
+│   └── coffee_sales_analysis.sql    # schema, CSV load, data checks, 23 queries
+├── notebooks/
+│   └── coffee_sales_eda.ipynb       # Python data checks + EDA
 ├── dashboard/
-│   └── coffee_sales_dashboard.pbix # Power BI report
-└── images/
-    └── dashboard.png       # High-resolution dashboard interface preview
+│   └── coffee_sales_dashboard.pbix  # Power BI report
+├── images/
+│   ├── dashboard.png
+│   └── charts/                      # charts saved by the notebook
+├── requirements.txt
+├── LICENSE
+└── README.md
 ```
 
 ---
 
-## 🚀 Setup & Execution Guide
+## ⚙️ How to Run
 
-### Prerequisites
-- [MySQL Server 8.0+](https://dev.mysql.com/downloads/mysql/) or MySQL Workbench
-- [Microsoft Power BI Desktop](https://powerbi.microsoft.com/desktop/)
-
-### 1. Database Initialization & SQL Execution
-Clone this repository and launch MySQL:
 ```bash
 git clone https://github.com/Yasheekaa/Coffee-Sales-Trend-Analysis.git
 cd Coffee-Sales-Trend-Analysis
 ```
 
-Execute the database provisioning and analysis script:
-```sql
-SOURCE sql/coffee_sales_analysis.sql;
+**SQL (MySQL 8.0)**
+1. Enable local file loading once: `SET GLOBAL local_infile = 1;` (in MySQL Workbench also add `OPT_LOCAL_INFILE=1` under *Edit Connection > Advanced > Others*).
+2. Run the script from the repo folder:
+   ```bash
+   mysql --local-infile=1 -u root -p < sql/coffee_sales_analysis.sql
+   ```
+   or open it in MySQL Workbench and change the path in the `LOAD DATA` line to your full path.
+
+**Python**
+```bash
+pip install -r requirements.txt
+cd notebooks
+jupyter notebook coffee_sales_eda.ipynb
 ```
-*Alternatively, open `sql/coffee_sales_analysis.sql` within MySQL Workbench or DBeaver and run all statements.*
 
-### 2. Exploring Power BI Dashboard
-1. Open [`dashboard/coffee_sales_dashboard.pbix`](dashboard/coffee_sales_dashboard.pbix) in **Power BI Desktop**.
-2. If prompted, verify the data source path points to [`data/coffee_data.csv`](data/coffee_data.csv) on your local system.
-3. Click **Home > Refresh** to reload data.
-4. Interact with the dynamic slicers (Day of Week, Shift, Payment Method) to explore multi-tier insights.
+**Power BI**
+Open `dashboard/coffee_sales_dashboard.pbix`. If the data does not load, go to *Transform data > Data source settings* and point it to `data/coffee_data.csv` on your computer, then click **Refresh**.
 
 ---
 
-## 👩‍💻 Author & Project Maintainer
+## 📚 What I Learned
 
-<p align="left">
-  <strong>Yashika Singh</strong><br/>
-  <em>Data Analyst & Business Intelligence Developer</em>
-</p>
-
-- 🐙 **GitHub:** [@Yasheekaa](https://github.com/Yasheekaa)
-- ✉️ **Email:** [yashikasingh120104@gmail.com](mailto:yashikasingh120104@gmail.com)
-
-### Core Competencies
-- **Data Querying & Engineering:** SQL (MySQL, PostgreSQL), Schema Design, CTEs, Window Functions, Performance Tuning
-- **Business Intelligence & Reporting:** Power BI, DAX Measures, Star Schema Data Modeling, Visual Storytelling
-- **Analytical Tooling:** Python (Pandas, NumPy, Matplotlib), Advanced Microsoft Excel
+- A month column without a year can silently mix two different months. Always check the full date range first.
+- Check every column before trusting it. The `Time` column and the payment type both looked normal until I counted the values.
+- Comparing totals between groups of different size (5 weekdays vs 2 weekend days) can be misleading, averages per day are fairer.
 
 ---
 
-⭐ *If you find this project helpful for your learning or portfolio reference, please consider starring the repository!*
+## 👩‍💻 Author
+
+**Yashika Singh**
+- GitHub: [@Yasheekaa](https://github.com/Yasheekaa)
+- LinkedIn: [Yashika Singh](https://www.linkedin.com/in/yashika-singh-33983a329/)
+- Email: [yashikasingh120104@gmail.com](mailto:yashikasingh120104@gmail.com)
+
+📄 Licensed under the [MIT License](./LICENSE).
