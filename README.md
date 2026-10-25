@@ -58,7 +58,9 @@ AVERAGEX(
 )
 ```
 
-There are also `Weekday_Spend` and `Weekday_Average_Spend` (same logic for Mon to Fri) and a `Coffee_Images` measure that returns an image URL for each coffee card.
+There are also `Weekday_Spend` and `Weekday_Average_Spend` (same logic for Mon to Fri) and a `Coffee_Images` measure that returns an image URL for each coffee card. The card icons are my own simple drawings, stored in [`images/coffee/`](images/coffee).
+
+The report loads `data/coffee_data.csv` straight from this GitHub repo (`Web.Contents` in Power Query), so it refreshes on any laptop without changing a file path.
 
 ---
 
@@ -196,6 +198,7 @@ Coffee-Sales-Trend-Analysis/
 │   └── coffee_sales_dashboard.pbix  # Power BI report
 ├── images/
 │   ├── dashboard.png
+│   ├── coffee/                      # icons used on the dashboard product cards
 │   └── charts/                      # charts saved by the notebook
 ├── requirements.txt
 ├── LICENSE
@@ -227,7 +230,7 @@ jupyter notebook coffee_sales_eda.ipynb
 ```
 
 **Power BI**
-Open `dashboard/coffee_sales_dashboard.pbix`. If the data does not load, go to *Transform data > Data source settings* and point it to `data/coffee_data.csv` on your computer, then click **Refresh**.
+Open `dashboard/coffee_sales_dashboard.pbix` and click **Refresh**. The data comes from the raw CSV link of this repo, so choose **Anonymous** if Power BI asks how to connect. To work offline, change the source in *Transform data* to `File.Contents` with the path of `data/coffee_data.csv` on your computer.
 
 ---
 
